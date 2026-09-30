@@ -7,3 +7,5 @@ downloads
 tdl
 .hugo_build.lock
 .DS_Store
+tdl-gui-dev
+.trae/
