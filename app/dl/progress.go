@@ -25,7 +25,8 @@ type progress struct {
 	trackers *sync.Map // map[ID]*pw.Tracker
 	opts     Options
 
-	it *iter
+	it   *iter
+	hook Hook
 }
 
 func newProgress(p pw.Writer, it *iter, opts Options) *progress {
@@ -34,12 +35,28 @@ func newProgress(p pw.Writer, it *iter, opts Options) *progress {
 		trackers: &sync.Map{},
 		opts:     opts,
 		it:       it,
+		hook:     opts.Hook,
+	}
+}
+
+func (p *progress) snapshot(e *iterElem) ElemInfo {
+	return ElemInfo{
+		ID:        e.id,
+		Name:      strings.TrimSuffix(filepath.Base(e.to.Name()), tempExt),
+		Path:      e.to.Name(),
+		Size:      e.file.Size,
+		DialogID:  e.from.ID(),
+		MessageID: e.fromMsg.ID,
 	}
 }
 
 func (p *progress) OnAdd(elem downloader.Elem) {
 	tracker := prog.AppendTracker(p.pw, utils.Byte.FormatBinaryBytes, p.processMessage(elem), elem.File().Size())
 	p.trackers.Store(elem.(*iterElem).id, tracker)
+
+	if p.hook != nil {
+		p.hook.OnAdd(p.snapshot(elem.(*iterElem)))
+	}
 }
 
 func (p *progress) OnDownload(elem downloader.Elem, state downloader.ProgressState) {
@@ -51,6 +68,10 @@ func (p *progress) OnDownload(elem downloader.Elem, state downloader.ProgressSta
 	t := tracker.(*pw.Tracker)
 	t.UpdateTotal(state.Total)
 	t.SetValue(state.Downloaded)
+
+	if p.hook != nil {
+		p.hook.OnDownload(p.snapshot(elem.(*iterElem)), state.Downloaded, state.Total)
+	}
 }
 
 func (p *progress) OnDone(elem downloader.Elem, err error) {
@@ -62,8 +83,20 @@ func (p *progress) OnDone(elem downloader.Elem, err error) {
 	}
 	t := tracker.(*pw.Tracker)
 
+	rerr := err // effective error reported to hook
+	finalPath := ""
+	defer func() {
+		if p.hook != nil {
+			info := p.snapshot(e)
+			info.FinalPath = finalPath
+			p.hook.OnDone(info, rerr)
+		}
+	}()
+
 	if err := e.to.Close(); err != nil {
-		p.fail(t, elem, errors.Wrap(err, "close file"))
+		err = errors.Wrap(err, "close file")
+		p.fail(t, elem, err)
+		rerr = err
 		return
 	}
 
@@ -77,19 +110,23 @@ func (p *progress) OnDone(elem downloader.Elem, err error) {
 
 	p.it.Finish(e.logicalPos)
 
-	if err := p.donePost(e); err != nil {
-		p.fail(t, elem, errors.Wrap(err, "post file"))
+	newPath, err := p.donePost(e)
+	if err != nil {
+		err = errors.Wrap(err, "post file")
+		p.fail(t, elem, err)
+		rerr = err
 		return
 	}
+	finalPath = newPath
 }
 
-func (p *progress) donePost(elem *iterElem) error {
+func (p *progress) donePost(elem *iterElem) (string, error) {
 	newfile := strings.TrimSuffix(filepath.Base(elem.to.Name()), tempExt)
 
 	if p.opts.RewriteExt {
 		mime, err := mimetype.DetectFile(elem.to.Name())
 		if err != nil {
-			return errors.Wrap(err, "detect mime")
+			return "", errors.Wrap(err, "detect mime")
 		}
 		ext := mime.Extension()
 		if ext != "" && (filepath.Ext(newfile) != ext) {
@@ -99,22 +136,24 @@ func (p *progress) donePost(elem *iterElem) error {
 
 	newpath := filepath.Join(filepath.Dir(elem.to.Name()), newfile)
 	if err := os.Rename(elem.to.Name(), newpath); err != nil {
-		return errors.Wrap(err, "rename file")
+		return "", errors.Wrap(err, "rename file")
 	}
 
 	// Set file modification time to message date if available
 	if elem.file.Date > 0 {
 		fileTime := time.Unix(elem.file.Date, 0)
 		if err := os.Chtimes(newpath, fileTime, fileTime); err != nil {
-			return errors.Wrap(err, "set file time")
+			return newpath, errors.Wrap(err, "set file time")
 		}
 	}
 
-	return nil
+	return newpath, nil
 }
 
 func (p *progress) fail(t *pw.Tracker, elem downloader.Elem, err error) {
-	p.pw.Log(color.RedString("%s error: %s", p.elemString(elem), err.Error()))
+	if p.hook == nil {
+		p.pw.Log(color.RedString("%s error: %s", p.elemString(elem), err.Error()))
+	}
 	t.MarkAsErrored()
 }
 

@@ -45,6 +45,10 @@ type Options struct {
 	// serve
 	Serve bool
 	Port  int
+
+	// Hook receives download events. When set, terminal rendering is
+	// disabled and events are forwarded to the hook instead.
+	Hook Hook
 }
 
 type parser struct {
@@ -99,7 +103,7 @@ func Run(ctx context.Context, c *telegram.Client, kvd storage.Storage, opts Opti
 
 	dlProgress := prog.New(utils.Byte.FormatBinaryBytes)
 	dlProgress.SetNumTrackersExpected(it.Total())
-	if !viper.GetBool(consts.FlagDisableProgressPS) {
+	if opts.Hook == nil && !viper.GetBool(consts.FlagDisableProgressPS) {
 		prog.EnablePS(ctx, dlProgress)
 	}
 
@@ -118,26 +122,28 @@ func Run(ctx context.Context, c *telegram.Client, kvd storage.Storage, opts Opti
 		zap.Int("threads", options.Threads),
 		zap.Int("limit", limit))
 
-	color.Green("All files will be downloaded to '%s' dir", opts.Dir)
+	if opts.Hook == nil {
+		color.Green("All files will be downloaded to '%s' dir", opts.Dir)
 
-	go dlProgress.Render()
-	defer func() {
-		prog.Wait(ctx, dlProgress)
+		go dlProgress.Render()
+		defer func() {
+			prog.Wait(ctx, dlProgress)
 
-		// Notify user if any messages were skipped due to deletion
-		// This is deferred to ensure it shows after progress rendering completes
-		if skipped := it.SkippedDeleted(); skipped > 0 {
-			deletedIDs := it.DeletedIDs()
-			if len(deletedIDs) <= 5 {
-				// Show all IDs if 5 or fewer
-				color.Yellow("⚠️  %d message(s) were skipped because they were deleted: %v", skipped, deletedIDs)
-			} else {
-				// Show first 5 and indicate there are more
-				color.Yellow("⚠️  %d message(s) were skipped because they were deleted: %v... and %d more",
-					skipped, deletedIDs[:5], len(deletedIDs)-5)
+			// Notify user if any messages were skipped due to deletion
+			// This is deferred to ensure it shows after progress rendering completes
+			if skipped := it.SkippedDeleted(); skipped > 0 {
+				deletedIDs := it.DeletedIDs()
+				if len(deletedIDs) <= 5 {
+					// Show all IDs if 5 or fewer
+					color.Yellow("⚠️  %d message(s) were skipped because they were deleted: %v", skipped, deletedIDs)
+				} else {
+					// Show first 5 and indicate there are more
+					color.Yellow("⚠️  %d message(s) were skipped because they were deleted: %v... and %d more",
+						skipped, deletedIDs[:5], len(deletedIDs)-5)
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return downloader.New(options).Download(ctx, limit)
 }

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TDL 下载助手</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="/">
+    <span class="brand-logo">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </span>
+    <span class="brand-name">TDL<small>Telegram 下载助手</small></span>
+  </a>
+  <div id="auth-bar">
+    <span id="auth-status">连接中…</span>
+    <button id="btn-auth">登录</button>
+    <button id="btn-settings">设置</button>
+  </div>
+</header>
+
+<section id="add-section">
+  <h2>添加任务</h2>
+  <form id="add-form">
+    <input type="url" id="inp-url" placeholder="Telegram 消息链接 (必填)" required>
+    <input type="text" id="inp-author" placeholder="作者 (作为子文件夹)">
+    <input type="text" id="inp-dir" placeholder="下载目录 (留空使用默认)">
+    <button type="submit">添加</button>
+  </form>
+</section>
+
+<section id="tasks-section">
+  <h2>任务列表</h2>
+  <div id="task-actions">
+    <button id="btn-start-all">全部开始</button>
+    <button id="btn-clear-done">清空已完成</button>
+  </div>
+  <div class="table-wrap">
+  <table id="task-table">
+    <thead>
+      <tr>
+        <th>状态</th>
+        <th>链接</th>
+        <th>作者</th>
+        <th>保存位置</th>
+        <th>进度</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="task-tbody">
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- Login Modal -->
+<div id="login-modal" class="modal">
+  <div class="modal-content">
+    <span class="close" id="login-close">&times;</span>
+    <h3>登录 Telegram</h3>
+    <div id="login-step-phone">
+      <input type="tel" id="login-phone" placeholder="+86 12345678900">
+      <button id="btn-send-code">发送验证码</button>
+    </div>
+    <div id="login-step-code" style="display:none">
+      <input type="text" id="login-code" placeholder="验证码">
+      <button id="btn-submit-code">验证</button>
+    </div>
+    <div id="login-step-password" style="display:none">
+      <input type="password" id="login-password" placeholder="二步验证密码">
+      <button id="btn-submit-password">确认</button>
+    </div>
+    <p id="login-error" class="error"></p>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal">
+  <div class="modal-content">
+    <span class="close" id="settings-close">&times;</span>
+    <h3>设置</h3>
+    <form id="settings-form">
+      <label>代理 (socks5/http/https)</label>
+      <input type="text" id="set-proxy" placeholder="socks5://127.0.0.1:1080">
+      <label>默认下载目录</label>
+      <input type="text" id="set-default-dir">
+      <label>默认作者</label>
+      <input type="text" id="set-default-author">
+      <label>最大并发任务数</label>
+      <input type="number" id="set-max-concurrent" min="1" max="10" value="1">
+      <label>单文件线程数</label>
+      <input type="number" id="set-threads" min="1" max="32" value="4">
+      <label>同任务并发数</label>
+      <input type="number" id="set-limit" min="1" max="16" value="2">
+      <label><input type="checkbox" id="set-rewrite-ext"> 根据 MIME 重写扩展名</label>
+      <label><input type="checkbox" id="set-skip-same"> 跳过同名同大小文件</label>
+      <button type="submit">保存</button>
+    </form>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
