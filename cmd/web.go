@@ -13,6 +13,7 @@ import (
 	"github.com/go-faster/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.etcd.io/bbolt"
 
 	"github.com/iyear/tdl/app/web"
 	"github.com/iyear/tdl/pkg/consts"
@@ -34,7 +35,24 @@ func NewWeb() *cobra.Command {
 			ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer cancel()
 
-			kvd, err := kv.From(ctx).Open(viper.GetString(consts.FlagNamespace))
+			ns := viper.GetString(consts.FlagNamespace)
+			kvd, err := kv.From(ctx).Open(ns)
+			if errors.Is(err, bbolt.ErrTimeout) {
+				// a stale `tdl web` instance holds the db lock: kill it and
+				// take over, so re-running the command acts as a restart
+				dbPath := filepath.Join(
+					viper.GetStringMapString(consts.FlagStorage)["path"], ns)
+				color.Yellow("Database %s is locked by a stale tdl web process, terminating it...", dbPath)
+				if kerr := terminateWebLockHolders(dbPath); kerr != nil {
+					color.Yellow("auto-terminate failed: %v", kerr)
+				}
+				// bbolt waits up to 1s per attempt; retry until the OS
+				// releases the killed process's file lock
+				for i := 0; i < 3 && err != nil; i++ {
+					time.Sleep(300 * time.Millisecond)
+					kvd, err = kv.From(ctx).Open(ns)
+				}
+			}
 			if err != nil {
 				return errors.Wrap(err, "open kv storage")
 			}
