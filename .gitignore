@@ -8,4 +8,5 @@ tdl
 .hugo_build.lock
 .DS_Store
 tdl-web-dev
+bin/
 .trae/
