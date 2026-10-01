@@ -1,4 +1,4 @@
-package gui
+package web
 
 import (
 	"context"
@@ -20,8 +20,8 @@ import (
 	"github.com/iyear/tdl/core/util/netutil"
 )
 
-//go:embed web
-var webFS embed.FS
+//go:embed static
+var staticFS embed.FS
 
 type Server struct {
 	engine *Engine
@@ -64,7 +64,7 @@ func NewServer(engine *Engine, webDir string) *Server {
 			http.ServeFile(w, req, webDir+"/index.html")
 		})
 	} else {
-		sub, err := fs.Sub(webFS, "web")
+		sub, err := fs.Sub(staticFS, "static")
 		if err != nil {
 			panic(err)
 		}

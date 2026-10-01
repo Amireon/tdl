@@ -1,7 +1,7 @@
 package dl
 
 // ElemInfo is a snapshot of a download element exposed to Hook
-// implementations, so that callers (e.g. GUI) don't need to access
+// implementations, so that callers (e.g. the web UI) don't need to access
 // internal types like iterElem, tmedia.Media or peers.Peer.
 type ElemInfo struct {
 	ID        int

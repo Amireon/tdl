@@ -1,4 +1,4 @@
-package gui
+package web
 
 import (
 	"path/filepath"
@@ -38,7 +38,7 @@ type Task struct {
 	FinishedAt   *time.Time `json:"finished_at,omitempty"`
 }
 
-// Settings are GUI-level options persisted to settings.json.
+// Settings are web-level options persisted to settings.json.
 type Settings struct {
 	Proxy              string `json:"proxy"` // protocol://username:password@host:port
 	DefaultDir         string `json:"default_dir"`

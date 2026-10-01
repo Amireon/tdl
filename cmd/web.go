@@ -14,12 +14,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/iyear/tdl/app/gui"
+	"github.com/iyear/tdl/app/web"
 	"github.com/iyear/tdl/pkg/consts"
 	"github.com/iyear/tdl/pkg/kv"
 )
 
-func NewGUI() *cobra.Command {
+func NewWeb() *cobra.Command {
 	var (
 		port      int
 		noBrowser bool
@@ -27,8 +27,8 @@ func NewGUI() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:     "gui",
-		Short:   "Start a local web GUI for tdl",
+		Use:     "web",
+		Short:   "Start a local web UI for tdl",
 		GroupID: groupTools.ID,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
@@ -39,27 +39,35 @@ func NewGUI() *cobra.Command {
 				return errors.Wrap(err, "open kv storage")
 			}
 
-			store, err := gui.NewStore(filepath.Join(consts.DataDir, "gui"))
+			dataDir := filepath.Join(consts.DataDir, "web")
+			// migrate data from the pre-rename "gui" directory
+			if oldDir := filepath.Join(consts.DataDir, "gui"); !fileExists(dataDir) && fileExists(oldDir) {
+				if err := os.Rename(oldDir, dataDir); err != nil {
+					return errors.Wrap(err, "migrate gui data dir")
+				}
+			}
+
+			store, err := web.NewStore(dataDir)
 			if err != nil {
-				return errors.Wrap(err, "open gui store")
+				return errors.Wrap(err, "open web store")
 			}
 
 			settings := store.Settings()
 			viper.Set(consts.FlagThreads, settings.Threads)
 			viper.Set(consts.FlagLimit, settings.Limit)
 
-			engine := gui.NewEngine(ctx, store, kvd, viper.GetString(consts.FlagProxy))
+			engine := web.NewEngine(ctx, store, kvd, viper.GetString(consts.FlagProxy))
 			engine.Start()
 
-			srv := gui.NewServer(engine, webDir)
+			srv := web.NewServer(engine, webDir)
 			url, err := srv.ListenAndServe(port)
 			if err != nil {
 				return err
 			}
 
-			color.Green("tdl GUI is running at %s", url)
+			color.Green("tdl web UI is running at %s", url)
 			if !noBrowser {
-				if err := gui.OpenBrowser(url); err != nil {
+				if err := web.OpenBrowser(url); err != nil {
 					color.Yellow("failed to open browser: %v", err)
 				}
 			}
@@ -85,4 +93,9 @@ func NewGUI() *cobra.Command {
 	cmd.Flags().StringVar(&webDir, "web-dir", "", "serve frontend from this directory instead of embedded assets (dev)")
 
 	return cmd
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

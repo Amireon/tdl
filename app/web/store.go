@@ -1,4 +1,4 @@
-package gui
+package web
 
 import (
 	"encoding/json"
@@ -20,7 +20,7 @@ type Store struct {
 
 func NewStore(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, errors.Wrap(err, "create gui dir")
+		return nil, errors.Wrap(err, "create web dir")
 	}
 
 	s := &Store{

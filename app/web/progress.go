@@ -1,4 +1,4 @@
-package gui
+package web
 
 import (
 	"context"
@@ -9,10 +9,10 @@ import (
 	"github.com/iyear/tdl/app/dl"
 )
 
-// guiHook implements dl.Hook and mirrors per-element progress into the task
+// webHook implements dl.Hook and mirrors per-element progress into the task
 // stored in Store. Progress updates are kept in memory (persist=false) and
 // flushed to disk by the engine's flush ticker.
-type guiHook struct {
+type webHook struct {
 	store *Store
 	id    string
 
@@ -28,8 +28,8 @@ type elemState struct {
 	name       string
 }
 
-func newGUIHook(store *Store, taskID string) *guiHook {
-	return &guiHook{
+func newWebHook(store *Store, taskID string) *webHook {
+	return &webHook{
 		store: store,
 		id:    taskID,
 		elems: make(map[int]*elemState),
@@ -38,14 +38,14 @@ func newGUIHook(store *Store, taskID string) *guiHook {
 
 // FailCount reports how many elements finished with an error, plus the
 // first error message. tdl's downloader intentionally swallows per-element
-// errors, so the GUI uses this to detect partial failures.
-func (h *guiHook) FailCount() (int, string) {
+// errors, so the web UI uses this to detect partial failures.
+func (h *webHook) FailCount() (int, string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.failCount, h.firstErr
 }
 
-func (h *guiHook) recalc() (downloaded, total int64, name string) {
+func (h *webHook) recalc() (downloaded, total int64, name string) {
 	for _, e := range h.elems {
 		downloaded += e.downloaded
 		total += e.size
@@ -56,7 +56,7 @@ func (h *guiHook) recalc() (downloaded, total int64, name string) {
 	return
 }
 
-func (h *guiHook) OnAdd(elem dl.ElemInfo) {
+func (h *webHook) OnAdd(elem dl.ElemInfo) {
 	h.mu.Lock()
 	h.elems[elem.ID] = &elemState{size: elem.Size, name: elem.Name}
 	d, t, name := h.recalc()
@@ -69,7 +69,7 @@ func (h *guiHook) OnAdd(elem dl.ElemInfo) {
 	})
 }
 
-func (h *guiHook) OnDownload(elem dl.ElemInfo, downloaded, total int64) {
+func (h *webHook) OnDownload(elem dl.ElemInfo, downloaded, total int64) {
 	h.mu.Lock()
 	st, ok := h.elems[elem.ID]
 	if !ok {
@@ -92,7 +92,7 @@ func (h *guiHook) OnDownload(elem dl.ElemInfo, downloaded, total int64) {
 	})
 }
 
-func (h *guiHook) OnDone(elem dl.ElemInfo, err error) {
+func (h *webHook) OnDone(elem dl.ElemInfo, err error) {
 	h.mu.Lock()
 	if st, ok := h.elems[elem.ID]; ok {
 		if err == nil {

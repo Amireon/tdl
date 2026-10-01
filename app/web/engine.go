@@ -1,4 +1,4 @@
-package gui
+package web
 
 import (
 	"context"
@@ -558,7 +558,7 @@ func (e *Engine) runTask(id string) {
 	}
 	e.mu.Unlock()
 
-	hook := newGUIHook(e.store, id)
+	hook := newWebHook(e.store, id)
 
 	now := time.Now()
 	_ = e.store.UpdateTask(id, true, func(t *Task) {
