@@ -377,16 +377,56 @@ func (e *Engine) StartTask(id string, restart bool) error {
 	return nil
 }
 
-// StartAll queues all pending tasks. Returns queued count.
-func (e *Engine) StartAll() int {
+// StartAll queues all pending tasks. When author is non-nil, only tasks of
+// that author are queued (empty string targets ungrouped tasks). Returns
+// queued count.
+func (e *Engine) StartAll(author *string) int {
 	n := 0
 	for _, t := range e.store.Tasks() {
+		if author != nil && t.Author != *author {
+			continue
+		}
 		if t.Status == TaskStatusPending {
 			if err := e.StartTask(t.ID, false); err == nil {
 				n++
 			}
 		}
 	}
+	return n
+}
+
+// CancelAll cancels running and pending tasks. When author is non-nil, only
+// tasks of that author are affected. Returns affected count.
+func (e *Engine) CancelAll(author *string) int {
+	n := 0
+	for _, t := range e.store.Tasks() {
+		if author != nil && t.Author != *author {
+			continue
+		}
+		if t.Status == TaskStatusDownloading || t.Status == TaskStatusPending {
+			if err := e.CancelTask(t.ID); err == nil {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// DeleteAll removes tasks, canceling running ones first. When author is
+// non-nil, only tasks of that author are removed. Returns removed count.
+func (e *Engine) DeleteAll(author *string) int {
+	ids := []string{}
+	for _, t := range e.store.Tasks() {
+		if author != nil && t.Author != *author {
+			continue
+		}
+		ids = append(ids, t.ID)
+	}
+	for _, id := range ids {
+		_ = e.CancelTask(id) // best effort
+		e.ForgetTask(id)
+	}
+	n, _ := e.store.DeleteByID(ids)
 	return n
 }
 

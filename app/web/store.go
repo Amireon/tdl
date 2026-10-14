@@ -197,15 +197,40 @@ func (s *Store) UpdateTask(id string, persist bool, fn func(*Task)) error {
 	return os.ErrNotExist
 }
 
-// ClearFinished removes done/error/canceled tasks.
-func (s *Store) ClearFinished() error {
+// DeleteByID removes all tasks with the given ids. Returns removed count.
+func (s *Store) DeleteByID(ids []string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	set := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		set[id] = struct{}{}
+	}
+	kept := s.tasks[:0]
+	for _, t := range s.tasks {
+		if _, del := set[t.ID]; !del {
+			kept = append(kept, t)
+		}
+	}
+	removed := len(s.tasks) - len(kept)
+	s.tasks = kept
+	return removed, s.saveTasksLocked()
+}
+
+// ClearFinished removes done/error/canceled tasks. When author is non-nil,
+// only tasks of that author are considered.
+func (s *Store) ClearFinished(author *string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	kept := s.tasks[:0]
 	for _, t := range s.tasks {
-		if t.Status == TaskStatusPending || t.Status == TaskStatusDownloading {
-			kept = append(kept, t)
+		finished := t.Status != TaskStatusPending && t.Status != TaskStatusDownloading
+		if finished && (author == nil || t.Author == *author) {
+			continue
 		}
+		kept = append(kept, t)
 	}
 	s.tasks = kept
 	return s.saveTasksLocked()

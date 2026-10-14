@@ -44,6 +44,8 @@ func NewServer(engine *Engine, webDir string) *Server {
 	r.HandleFunc("/api/tasks", s.listTasks).Methods(http.MethodGet)
 	r.HandleFunc("/api/tasks", s.createTask).Methods(http.MethodPost)
 	r.HandleFunc("/api/tasks/start-all", s.startAll).Methods(http.MethodPost)
+	r.HandleFunc("/api/tasks/cancel-all", s.cancelAll).Methods(http.MethodPost)
+	r.HandleFunc("/api/tasks/delete-all", s.deleteAll).Methods(http.MethodPost)
 	r.HandleFunc("/api/tasks/clear-finished", s.clearFinished).Methods(http.MethodPost)
 	r.HandleFunc("/api/tasks/{id}", s.deleteTask).Methods(http.MethodDelete)
 	r.HandleFunc("/api/tasks/{id}/start", s.startTask).Methods(http.MethodPost)
@@ -353,13 +355,35 @@ func (s *Server) cancelTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
-func (s *Server) startAll(w http.ResponseWriter, _ *http.Request) {
-	n := s.engine.StartAll()
+// authorFilter returns a non-nil pointer when the request scopes a batch
+// operation to a single author group via ?author=.... An empty value targets
+// the ungrouped tasks (no author); a missing parameter means "all tasks".
+func authorFilter(r *http.Request) *string {
+	v, ok := r.URL.Query()["author"]
+	if !ok {
+		return nil
+	}
+	a := v[0]
+	return &a
+}
+
+func (s *Server) startAll(w http.ResponseWriter, r *http.Request) {
+	n := s.engine.StartAll(authorFilter(r))
 	writeJSON(w, map[string]int{"started": n})
 }
 
-func (s *Server) clearFinished(w http.ResponseWriter, _ *http.Request) {
-	if err := s.engine.store.ClearFinished(); err != nil {
+func (s *Server) cancelAll(w http.ResponseWriter, r *http.Request) {
+	n := s.engine.CancelAll(authorFilter(r))
+	writeJSON(w, map[string]int{"canceled": n})
+}
+
+func (s *Server) deleteAll(w http.ResponseWriter, r *http.Request) {
+	n := s.engine.DeleteAll(authorFilter(r))
+	writeJSON(w, map[string]int{"deleted": n})
+}
+
+func (s *Server) clearFinished(w http.ResponseWriter, r *http.Request) {
+	if err := s.engine.store.ClearFinished(authorFilter(r)); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
