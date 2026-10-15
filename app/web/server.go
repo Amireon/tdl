@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/go-faster/errors"
@@ -18,6 +19,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/iyear/tdl/core/util/netutil"
+	"github.com/iyear/tdl/pkg/tplfunc"
 )
 
 //go:embed static
@@ -187,9 +189,22 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 }
 
 type createTaskReq struct {
-	URL    string `json:"url"`
-	Author string `json:"author"`
-	Dir    string `json:"dir"`
+	URL              string `json:"url"`
+	Author           string `json:"author"`
+	Dir              string `json:"dir"`
+	FilenameTemplate string `json:"filename_template"`
+}
+
+// validateFilenameTemplate makes sure a user-supplied file name template can
+// be parsed with the same function set the downloader uses, so an invalid
+// template is rejected up-front instead of failing the task later. An empty
+// template is valid and means "use the default naming scheme".
+func validateFilenameTemplate(tpl string) error {
+	if tpl == "" {
+		return nil
+	}
+	_, err := template.New("dl").Funcs(tplfunc.FuncMap(tplfunc.All...)).Parse(tpl)
+	return err
 }
 
 // normalizeMessageURL trims the input and prepends https:// when no scheme
@@ -276,13 +291,20 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		dir = settings.DefaultDir
 	}
 
+	filenameTemplate := strings.TrimSpace(req.FilenameTemplate)
+	if err := validateFilenameTemplate(filenameTemplate); err != nil {
+		writeError(w, http.StatusBadRequest, "文件名模板无效: "+err.Error())
+		return
+	}
+
 	t := &Task{
-		ID:        uuid.NewString(),
-		URL:       req.URL,
-		Author:    author,
-		Dir:       dir,
-		Status:    TaskStatusPending,
-		CreatedAt: time.Now(),
+		ID:               uuid.NewString(),
+		URL:              req.URL,
+		Author:           author,
+		Dir:              dir,
+		FilenameTemplate: filenameTemplate,
+		Status:           TaskStatusPending,
+		CreatedAt:        time.Now(),
 	}
 	if err := s.engine.store.AddTask(t); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

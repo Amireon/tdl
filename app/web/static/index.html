@@ -30,22 +30,39 @@
     添加任务
   </h2>
   <form id="add-form">
-    <div class="field">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <input type="url" id="inp-url" placeholder="粘贴 Telegram 消息链接（必填）" required>
+    <div class="form-row">
+      <div class="field field-grow">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <input type="url" id="inp-url" placeholder="粘贴 Telegram 消息链接（必填）" required>
+      </div>
+      <button type="submit" class="primary">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        添加
+      </button>
     </div>
-    <div class="field">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <input type="text" id="inp-author" placeholder="作者（作为子文件夹）">
+    <div class="form-row">
+      <div class="field">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <input type="text" id="inp-author" placeholder="作者（作为子文件夹）">
+      </div>
+      <div class="field">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <input type="text" id="inp-filename" placeholder="自定义文件名（可选）" title="留空按「对话ID_消息ID_原文件名」命名。支持模板变量：{{ .FileName }}、{{ .MessageID }}、{{ .DialogID }}、{{ formatDate .DownloadDate &quot;2006-01-02&quot; }} 等">
+      </div>
     </div>
-    <div class="field">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-      <input type="text" id="inp-dir" placeholder="下载目录（留空使用默认）">
+    <div class="form-row" id="dir-row" hidden>
+      <div class="field field-dir">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <input type="text" id="inp-dir" placeholder="下载目录（留空使用默认）">
+      </div>
     </div>
-    <button type="submit" class="primary">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      添加
-    </button>
+    <div class="form-foot">
+      <button type="button" id="btn-dir-toggle" class="more-toggle" aria-expanded="false" title="自定义本次任务的下载目录">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        下载目录
+      </button>
+      <span class="form-hint">文件名支持 {{ .FileName }}、{{ .MessageID }} 等模板变量；留空则按「对话ID_消息ID_原名」命名。</span>
+    </div>
   </form>
 </section>
 

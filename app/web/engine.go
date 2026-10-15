@@ -618,7 +618,7 @@ func (e *Engine) runTask(id string) {
 		Dir:        dir,
 		RewriteExt: settings.RewriteExt,
 		SkipSame:   settings.SkipSame,
-		Template:   `{{ .DialogID }}_{{ .MessageID }}_{{ filenamify .FileName }}`,
+		Template:   filenameTemplateOrDefault(t.FilenameTemplate),
 		Group:      true,
 		Continue:   !restart,
 		Restart:    restart,
@@ -655,6 +655,19 @@ func (e *Engine) runTask(id string) {
 			t.FinishedAt = &finished
 		})
 	}
+}
+
+// defaultFilenameTemplate is the built-in naming scheme used when a task has
+// no custom file name template: 对话ID_消息ID_原文件名.
+const defaultFilenameTemplate = `{{ .DialogID }}_{{ .MessageID }}_{{ filenamify .FileName }}`
+
+// filenameTemplateOrDefault returns the task's custom file name template, or
+// the default scheme when none was provided.
+func filenameTemplateOrDefault(tpl string) string {
+	if strings.TrimSpace(tpl) == "" {
+		return defaultFilenameTemplate
+	}
+	return tpl
 }
 
 // effectiveDir returns the actual on-disk folder tdl downloads a task

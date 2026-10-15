@@ -136,6 +136,7 @@ function renderGroupHead(g) {
 
 function renderTaskRow(t) {
   const tr = document.createElement('tr');
+  tr.className = 'task-row';
   const pct = t.total > 0 ? Math.round(t.progress / t.total * 100) : 0;
   let barMod = '';
   if (t.status === 'done') barMod = 'is-done';
@@ -156,8 +157,8 @@ function renderTaskRow(t) {
   actions += `<button class="icon-btn danger" data-act="delete" data-id="${t.id}" title="删除任务">${ICONS.trash}</button>`;
 
   const urlText = t.url.replace(/^https?:\/\//, '');
-  const urlShort = urlText.length > 34 ? urlText.slice(0, 34) + '…' : urlText;
-  const errShort = (t.error || '').slice(0, 60) + ((t.error || '').length > 60 ? '…' : '');
+  const urlShort = urlText.length > 44 ? urlText.slice(0, 44) + '…' : urlText;
+  const errShort = (t.error || '').slice(0, 80) + ((t.error || '').length > 80 ? '…' : '');
   const sizeText = t.total > 0 ? `${fmtBytes(t.progress)} / ${fmtBytes(t.total)}` : '—';
 
   const kind = t.filename ? fileKind(t.filename) : 'pending';
@@ -165,18 +166,20 @@ function renderTaskRow(t) {
     ? `<span class="file-line"><span class="file-ico kind-${kind}">${ICONS.kind[kind]}</span><span class="file-name" title="${esc(t.filename)}">${esc(t.filename)}</span></span>`
     : '';
   tr.innerHTML = `
-    <td><span class="status-pill st-${t.status}" title="${esc(t.error || '')}"><span class="dot"></span>${STATUS_TEXT[t.status] || t.status}</span></td>
-    <td>
-      <div class="link-stack">
-        <a class="link-cell" href="${esc(t.url)}" target="_blank" rel="noopener noreferrer" title="${esc(t.url)}">${ICONS.plane}<span class="link-text">${esc(urlShort)}</span></a>
-        ${fileLine}
+    <td colspan="4" class="task-cell">
+      <div class="task-item">
+        <div class="task-top">
+          <span class="status-pill st-${t.status}" title="${esc(t.error || '')}"><span class="dot"></span>${STATUS_TEXT[t.status] || t.status}</span>
+          <a class="link-cell" href="${esc(t.url)}" target="_blank" rel="noopener noreferrer" title="${esc(t.url)}">${ICONS.plane}<span class="link-text">${esc(urlShort)}</span></a>
+          <div class="actions">${actions}</div>
+        </div>
+        <div class="task-bottom">
+          <div class="progress-bar"><div class="progress-bar-inner ${barMod}" style="width:${pct}%"></div></div>
+          ${fileLine}
+          <span class="task-size">${sizeText} · ${pct}%</span>
+        </div>
+        ${t.error ? `<div class="task-err" title="${esc(t.error)}">${esc(errShort)}</div>` : ''}
       </div>
-    </td>
-    <td class="act-col"><div class="actions">${actions}</div></td>
-    <td class="progress">
-      <div class="progress-bar"><div class="progress-bar-inner ${barMod}" style="width:${pct}%"></div></div>
-      <div class="progress-meta"><span>${sizeText}</span><span class="progress-pct">${pct}%</span></div>
-      ${t.error ? `<div class="progress-err" title="${esc(t.error)}">${esc(errShort)}</div>` : ''}
     </td>
   `;
   return tr;
@@ -244,16 +247,34 @@ $('#add-form').addEventListener('submit', async (e) => {
     url: $('#inp-url').value.trim(),
     author: $('#inp-author').value.trim(),
     dir: $('#inp-dir').value.trim(),
+    filename_template: $('#inp-filename').value.trim(),
   };
   const r = await fetch(API + '/api/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (r.ok) {
     $('#inp-url').value = '';
+    $('#inp-filename').value = '';
     poll();
   } else {
     const t = await r.text();
     alert('添加失败: ' + t);
   }
 });
+
+// Collapsible download-dir field (state remembered across visits)
+let dirRowOpen = localStorage.getItem('tdl.addDirOpen') === '1';
+function renderDirRow() {
+  $('#dir-row').hidden = !dirRowOpen;
+  const btn = $('#btn-dir-toggle');
+  btn.classList.toggle('is-open', dirRowOpen);
+  btn.setAttribute('aria-expanded', String(dirRowOpen));
+}
+$('#btn-dir-toggle').addEventListener('click', () => {
+  dirRowOpen = !dirRowOpen;
+  localStorage.setItem('tdl.addDirOpen', dirRowOpen ? '1' : '0');
+  renderDirRow();
+  if (dirRowOpen) $('#inp-dir').focus();
+});
+renderDirRow();
 
 // Task actions
 document.addEventListener('click', async (e) => {

@@ -20,15 +20,19 @@ const (
 
 // Task is a single download job created from a Telegram message URL.
 type Task struct {
-	ID        string     `json:"id"`
-	URL       string     `json:"url"`
-	Author    string     `json:"author"`
-	Dir       string     `json:"dir"`
-	Status    TaskStatus `json:"status"`
-	Progress  int64      `json:"progress"` // downloaded bytes
-	Total     int64      `json:"total"`    // total bytes
-	Filename  string     `json:"filename,omitempty"`
-	FinalPath string     `json:"final_path,omitempty"`
+	ID     string `json:"id"`
+	URL    string `json:"url"`
+	Author string `json:"author"`
+	Dir    string `json:"dir"`
+	// FilenameTemplate is an optional Go template for naming downloaded files,
+	// e.g. `{{ .MessageID }}_{{ .FileName }}`. Empty means the built-in default
+	// naming scheme.
+	FilenameTemplate string     `json:"filename_template,omitempty"`
+	Status           TaskStatus `json:"status"`
+	Progress         int64      `json:"progress"` // downloaded bytes
+	Total            int64      `json:"total"`    // total bytes
+	Filename         string     `json:"filename,omitempty"`
+	FinalPath        string     `json:"final_path,omitempty"`
 	// EffectiveDir is the actual on-disk folder (dir + author subdir),
 	// computed on read by the server. It is never persisted.
 	EffectiveDir string     `json:"effective_dir,omitempty"`
